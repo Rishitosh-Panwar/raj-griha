@@ -10,10 +10,11 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
 const sendTokenCookie = (res, token) => {
+  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 };
@@ -208,7 +209,8 @@ const googleAuth = async (req, res) => {
 
 // @route POST /api/auth/logout
 const logout = (req, res) => {
-  res.cookie('token', '', { maxAge: 0 });
+  const isProd = process.env.NODE_ENV === 'production';
+  res.cookie('token', '', { maxAge: 0, secure: isProd, sameSite: isProd ? 'none' : 'lax' });
   res.json({ message: 'Logged out' });
 };
 
