@@ -75,6 +75,11 @@ const verifyPayment = async (req, res) => {
     const booking = await Booking.findById(bookingId).populate('room', 'roomNumber type');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
+    const alreadyProcessed = booking.payments.some(p => p.razorpayPaymentId === razorpay_payment_id);
+    if (alreadyProcessed) {
+      return res.json({ message: 'Payment already processed', booking });
+    }
+
     booking.amountPaid += Number(amount);
     booking.paymentStatus = booking.amountPaid >= booking.totalAmount ? 'paid' : 'partial';
     booking.status = 'confirmed';
@@ -155,6 +160,11 @@ const verifyGroupPayment = async (req, res) => {
 
     const bookings = await Booking.find({ groupId, user: req.user._id }).populate('room', 'roomNumber type');
     if (bookings.length === 0) return res.status(404).json({ message: 'Group booking not found' });
+
+    const alreadyProcessed = bookings.some(b => b.payments.some(p => p.razorpayPaymentId === razorpay_payment_id));
+    if (alreadyProcessed) {
+      return res.json({ message: 'Payment already processed', bookings });
+    }
 
     const groupTotal = bookings.reduce((sum, b) => sum + b.totalAmount, 0);
     let distributed = 0;

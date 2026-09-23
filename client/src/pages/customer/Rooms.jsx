@@ -114,7 +114,7 @@ const Rooms = () => {
             <select value={filters.capacity} onChange={(e) => setFilters({ ...filters, capacity: e.target.value })}
               className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm">
               <option value="">Any</option>
-              <option value="1">1+</option><option value="2">2+</option><option value="4">4+</option>
+              <option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option>
             </select>
           </div>
           <div>

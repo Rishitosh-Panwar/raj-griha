@@ -181,7 +181,7 @@ const Home = () => {
                   <div className="p-6">
                     <h3 className="font-serif text-xl text-primary-800 mb-1">{room.type}</h3>
                     <p className="text-primary-600 font-medium mb-1">From ₹{room.priceEP}/night</p>
-                    <p className="text-xs text-gray-400 mb-3">Breakfast & dinner included</p>
+                    <p className="text-xs text-gray-400 mb-3">Room only (EP) · CP & MAP plans available</p>
                     <p className="text-sm text-gray-500 mb-4">{room.capacity} Guests</p>
                     <Link to={`/rooms/type/${room.type}`} className="text-sm font-medium text-primary-600 hover:text-primary-800">
   View Details →
