@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, X } from 'lucide-react';
 import api from '../../api/axios';
 
 const emptyForm = {
-  roomNumber: '', type: 'Standard', priceEP: '', priceCP: '', priceMAP: '', capacity: '', description: '', amenities: '',
+  roomNumber: '', type: 'Standard', priceEP: '', priceCP: '', priceMAP: '', extraGuestCharge: '', capacity: '', description: '', amenities: '',
 };
 
 const RoomManagement = () => {
@@ -46,6 +46,7 @@ const RoomManagement = () => {
       priceEP: room.priceEP ?? '',
       priceCP: room.priceCP ?? '',
       priceMAP: room.priceMAP ?? '',
+      extraGuestCharge: room.extraGuestCharge ?? '',
       capacity: room.capacity,
       description: room.description || '',
       amenities: (room.amenities || []).join(', '),
@@ -64,6 +65,7 @@ const RoomManagement = () => {
     fd.append('priceEP', form.priceEP);
     fd.append('priceCP', form.priceCP);
     fd.append('priceMAP', form.priceMAP);
+    fd.append('extraGuestCharge', form.extraGuestCharge || 0);
     fd.append('capacity', form.capacity);
     fd.append('description', form.description);
     fd.append('amenities', JSON.stringify(form.amenities.split(',').map(a => a.trim()).filter(Boolean)));
@@ -113,12 +115,13 @@ const RoomManagement = () => {
         <p className="text-gray-400">Loading...</p>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
-          <table className="w-full text-sm min-w-[700px]">
+          <table className="w-full text-sm min-w-[750px]">
             <thead className="bg-gray-50 text-gray-500 text-left">
               <tr>
                 <th className="px-6 py-3 font-medium">Room</th>
                 <th className="px-6 py-3 font-medium">Type</th>
                 <th className="px-6 py-3 font-medium">EP / CP / MAP</th>
+                <th className="px-6 py-3 font-medium">Extra Guest</th>
                 <th className="px-6 py-3 font-medium">Capacity</th>
                 <th className="px-6 py-3 font-medium">Status</th>
                 <th className="px-6 py-3 font-medium text-right">Actions</th>
@@ -136,6 +139,9 @@ const RoomManagement = () => {
                   <td className="px-6 py-3">{room.type}</td>
                   <td className="px-6 py-3 text-xs">
                     ₹{room.priceEP ?? '—'} / ₹{room.priceCP ?? '—'} / ₹{room.priceMAP ?? '—'}
+                  </td>
+                  <td className="px-6 py-3 text-xs">
+                    {room.extraGuestCharge > 0 ? `+₹${room.extraGuestCharge}` : '—'}
                   </td>
                   <td className="px-6 py-3">{room.capacity}</td>
                   <td className="px-6 py-3">
@@ -213,12 +219,24 @@ const RoomManagement = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Capacity</label>
-                  <input type="number" required min={1} value={form.capacity}
-                    onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-                    className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Capacity (beds)</label>
+                    <input type="number" required min={1} value={form.capacity}
+                      onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                      className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Extra guest charge (₹/night)</label>
+                    <input type="number" min={0} value={form.extraGuestCharge}
+                      onChange={(e) => setForm({ ...form, extraGuestCharge: e.target.value })}
+                      placeholder="0"
+                      className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
                 </div>
+                <p className="text-xs text-gray-400 -mt-2">
+                  Charged only when guests reach full bed capacity (e.g. 3rd guest in a 3-bed room). Leave 0 for 2-bed rooms.
+                </p>
 
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Amenities (comma separated)</label>

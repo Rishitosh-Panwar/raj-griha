@@ -6,6 +6,7 @@ const roomSchema = new mongoose.Schema({
   priceEP: { type: Number, required: true, min: 0 },   // Room Only
   priceCP: { type: Number, required: true, min: 0 },   // Room + Breakfast
   priceMAP: { type: Number, required: true, min: 0 },  // Room + Breakfast + Dinner
+  extraGuestCharge: { type: Number, default: 0, min: 0 },
   capacity: { type: Number, required: true, min: 1 },
   amenities: [{ type: String }],
   images: [{ url: String, publicId: String }],

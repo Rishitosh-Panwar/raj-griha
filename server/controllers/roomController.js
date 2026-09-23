@@ -34,7 +34,7 @@ const getRoomById = async (req, res) => {
 
 const createRoom = async (req, res) => {
   try {
-    const { roomNumber, type, priceEP, priceCP, priceMAP, capacity, amenities, description } = req.body;
+    const { roomNumber, type, priceEP, priceCP, priceMAP, extraGuestCharge, capacity, amenities, description } = req.body;
 
     const existing = await Room.findOne({ roomNumber });
     if (existing) {
@@ -47,7 +47,9 @@ const createRoom = async (req, res) => {
     }));
 
     const room = await Room.create({
-      roomNumber, type, priceEP, priceCP, priceMAP, capacity,
+      roomNumber, type, priceEP, priceCP, priceMAP,
+      extraGuestCharge: extraGuestCharge || 0,
+      capacity,
       amenities: amenities ? JSON.parse(amenities) : [],
       description,
       images
@@ -64,13 +66,14 @@ const updateRoom = async (req, res) => {
     const room = await Room.findById(req.params.id);
     if (!room) return res.status(404).json({ message: 'Room not found' });
 
-    const { roomNumber, type, priceEP, priceCP, priceMAP, capacity, amenities, description, status } = req.body;
+    const { roomNumber, type, priceEP, priceCP, priceMAP, extraGuestCharge, capacity, amenities, description, status } = req.body;
 
     if (roomNumber) room.roomNumber = roomNumber;
     if (type) room.type = type;
     if (priceEP) room.priceEP = priceEP;
     if (priceCP) room.priceCP = priceCP;
     if (priceMAP) room.priceMAP = priceMAP;
+    if (extraGuestCharge !== undefined) room.extraGuestCharge = extraGuestCharge;
     if (capacity) room.capacity = capacity;
     if (amenities) room.amenities = JSON.parse(amenities);
     if (description) room.description = description;
@@ -157,6 +160,7 @@ const searchAvailableRooms = async (req, res) => {
           priceEP: room.priceEP,
           priceCP: room.priceCP,
           priceMAP: room.priceMAP,
+          extraGuestCharge: room.extraGuestCharge || 0,
           amenities: room.amenities,
           images: room.images,
           availableCount: 0,

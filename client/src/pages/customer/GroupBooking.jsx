@@ -71,7 +71,10 @@ const GroupBooking = () => {
   const nights = datesReady ? Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) : 0;
   const priceForEntry = (entry) => {
     const priceByPlan = { EP: entry.room.priceEP, CP: entry.room.priceCP, MAP: entry.room.priceMAP };
-    return priceByPlan[entry.mealPlan] * nights;
+    const totalGuests = Number(entry.adults) + Number(entry.children);
+    const isFullOccupancy = totalGuests >= entry.room.capacity;
+    const extraCharge = isFullOccupancy ? (entry.room.extraGuestCharge || 0) : 0;
+    return (priceByPlan[entry.mealPlan] + extraCharge) * nights;
   };
   const grandTotal = cartEntries.reduce((sum, e) => sum + priceForEntry(e), 0);
 
@@ -208,6 +211,13 @@ const GroupBooking = () => {
                       </div>
                     </div>
                     <p className="text-sm text-primary-700 font-medium">₹{priceForEntry(entry)} for {nights} nights</p>
+                    {entry.room.extraGuestCharge > 0 && (
+                      Number(entry.adults) + Number(entry.children) < entry.room.capacity ? (
+                        <p className="text-xs text-green-700 mt-1">Discounted rate for this occupancy</p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">Full-occupancy rate</p>
+                      )
+                    )}
                   </motion.div>
                 ))}
 

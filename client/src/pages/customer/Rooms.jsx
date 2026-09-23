@@ -168,9 +168,13 @@ const Rooms = () => {
                       {group.availableCount} available
                     </span>
                   </div>
-                  <p className="text-primary-600 font-medium mb-1">
+                 <p className="text-primary-600 font-medium mb-1">
                     ₹{filters.mealPlan === 'CP' ? group.priceCP : filters.mealPlan === 'MAP' ? group.priceMAP : group.priceEP}/night
+                    {group.extraGuestCharge > 0 && <span className="text-xs">*</span>}
                   </p>
+                  {group.extraGuestCharge > 0 && (
+                    <p className="text-xs text-green-700 mb-1">*Discounted rate for up to {group.capacity - 1} guests</p>
+                  )}
                   <p className="text-sm text-gray-500 mb-4">Up to {group.capacity} guests</p>
                   <button onClick={() => goToType(group)}
                     className="w-full text-center bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-full text-sm font-medium transition-colors">

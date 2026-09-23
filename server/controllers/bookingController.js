@@ -97,7 +97,10 @@ const createBooking = async (req, res) => {
 
     const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     const priceByPlan = { EP: room.priceEP, CP: room.priceCP, MAP: room.priceMAP };
-    const totalAmount = nights * priceByPlan[plan];
+    const totalGuests = Number(adults) + Number(children || 0);
+    const isFullOccupancy = totalGuests >= room.capacity;
+    const perNightPrice = priceByPlan[plan] + (isFullOccupancy ? (room.extraGuestCharge || 0) : 0);
+    const totalAmount = nights * perNightPrice;
 
     const booking = await Booking.create({
       user: req.user._id,
@@ -173,7 +176,10 @@ const createGroupBooking = async (req, res) => {
       const room = await Room.findById(entry.roomId);
       const plan = ['EP', 'CP', 'MAP'].includes(entry.mealPlan) ? entry.mealPlan : 'EP';
       const priceByPlan = { EP: room.priceEP, CP: room.priceCP, MAP: room.priceMAP };
-      const totalAmount = nights * priceByPlan[plan];
+      const totalGuests = Number(entry.adults) + Number(entry.children || 0);
+      const isFullOccupancy = totalGuests >= room.capacity;
+      const perNightPrice = priceByPlan[plan] + (isFullOccupancy ? (room.extraGuestCharge || 0) : 0);
+      const totalAmount = nights * perNightPrice;
 
       const booking = await Booking.create({
         user: req.user._id,

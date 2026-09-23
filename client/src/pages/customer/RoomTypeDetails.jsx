@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import { Users, Check, X } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
-import usePageTitle from '../../hooks/usePageTitle';
 
 const plans = [
   { key: 'EP', label: 'EP', desc: 'Room Only' },
@@ -15,7 +14,6 @@ const plans = [
 
 const RoomTypeDetails = () => {
   const { type } = useParams();
-  usePageTitle(`${type} Room`);
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -55,57 +53,57 @@ const RoomTypeDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
- const checkAvailability = async () => {
-  if (!checkIn || !checkOut) {
-    toast.error('Select check-in and check-out dates');
-    return;
-  }
-  setChecking(true);
-  try {
-    const { data } = await api.get('/rooms/search', {
-      params: { checkIn, checkOut, type, mealPlan, capacity: adults + children },
-    });
-    const group = data.find((g) => g.type === type);
-    setAvailableCount(group ? group.availableCount : 0);
-    if (!group || group.availableCount === 0) {
-      toast.error(`No ${type} rooms available for ${adults + children} guests on these dates`);
+  const checkAvailability = async () => {
+    if (!checkIn || !checkOut) {
+      toast.error('Select check-in and check-out dates');
+      return;
     }
-  } catch {
-    toast.error('Could not check availability');
-  } finally {
-    setChecking(false);
-  }
-};
+    setChecking(true);
+    try {
+      const { data } = await api.get('/rooms/search', {
+        params: { checkIn, checkOut, type, mealPlan, capacity: adults + children },
+      });
+      const group = data.find((g) => g.type === type);
+      setAvailableCount(group ? group.availableCount : 0);
+      if (!group || group.availableCount === 0) {
+        toast.error(`No ${type} rooms available for ${adults + children} guests on these dates`);
+      }
+    } catch {
+      toast.error('Could not check availability');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const handleBooking = async () => {
-  if (!user) {
-    toast.error('Please log in to book a room');
-    navigate('/login');
-    return;
-  }
-  if (!availableCount || availableCount < 1) {
-    toast.error('Please check availability first');
-    return;
-  }
-  if (!user.phone && !/^\+?[0-9]{7,15}$/.test(phoneInput)) {
-    toast.error('Please enter a valid phone number');
-    return;
-  }
-  setBooking(true);
-  try {
-    const { data } = await api.post('/bookings', {
-      type, checkIn, checkOut, adults, children, mealPlan,
-      phone: user.phone ? undefined : phoneInput,
-    });
-    toast.success('Booking created!');
-    navigate(`/booking-confirmation/${data._id}`);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Booking failed');
-    setAvailableCount(null);
-  } finally {
-    setBooking(false);
-  }
-};
+    if (!user) {
+      toast.error('Please log in to book a room');
+      navigate('/login');
+      return;
+    }
+    if (!availableCount || availableCount < 1) {
+      toast.error('Please check availability first');
+      return;
+    }
+    if (!user.phone && !/^\+?[0-9]{7,15}$/.test(phoneInput)) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+    setBooking(true);
+    try {
+      const { data } = await api.post('/bookings', {
+        type, checkIn, checkOut, adults, children, mealPlan,
+        phone: user.phone ? undefined : phoneInput,
+      });
+      toast.success('Booking created!');
+      navigate(`/booking-confirmation/${data._id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Booking failed');
+      setAvailableCount(null);
+    } finally {
+      setBooking(false);
+    }
+  };
 
   const handleInquirySubmit = async (e) => {
     e.preventDefault();
@@ -129,7 +127,10 @@ const RoomTypeDetails = () => {
     : 0;
 
   const priceByPlan = { EP: sampleRoom.priceEP, CP: sampleRoom.priceCP, MAP: sampleRoom.priceMAP };
-  const currentPrice = priceByPlan[mealPlan];
+  const totalGuests = Number(adults) + Number(children);
+  const isFullOccupancy = totalGuests >= sampleRoom.capacity;
+  const extraCharge = isFullOccupancy ? (sampleRoom.extraGuestCharge || 0) : 0;
+  const currentPrice = priceByPlan[mealPlan] + extraCharge;
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10 sm:py-16 grid md:grid-cols-2 gap-8 md:gap-12">
@@ -181,10 +182,18 @@ const RoomTypeDetails = () => {
               }`}>
               <p className="font-semibold text-primary-800 text-sm">{p.label}</p>
               <p className="text-xs text-gray-500 mb-1">{p.desc}</p>
-              <p className="text-primary-600 font-medium text-sm">₹{priceByPlan[p.key]}</p>
+              <p className="text-primary-600 font-medium text-sm">
+                ₹{priceByPlan[p.key]}{sampleRoom.extraGuestCharge > 0 && <span className="text-xs">*</span>}
+              </p>
             </button>
           ))}
         </div>
+        {sampleRoom.extraGuestCharge > 0 && (
+          <p className="text-xs text-gray-400 -mt-4 mb-6">
+            *Discounted rate for up to {sampleRoom.capacity - 1} guests. Full occupancy ({sampleRoom.capacity} guests)
+            rate: ₹{priceByPlan[mealPlan] + sampleRoom.extraGuestCharge}/night. See our <a href="/terms" className="underline">Terms & Conditions</a>.
+          </p>
+        )}
 
         <div className="bg-primary-50 rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -203,23 +212,34 @@ const RoomTypeDetails = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-  <div>
-    <label className="text-xs text-gray-500 mb-1 block">Adults</label>
-    <input type="number" min={1} value={adults}
-      onChange={(e) => { setAdults(Number(e.target.value)); setAvailableCount(null); }}
-      className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm" />
-  </div>
-  <div>
-    <label className="text-xs text-gray-500 mb-1 block">Children</label>
-    <input type="number" min={0} value={children}
-      onChange={(e) => { setChildren(Number(e.target.value)); setAvailableCount(null); }}
-      className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm" />
-  </div>
-</div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Adults</label>
+              <input type="number" min={1} value={adults}
+                onChange={(e) => { setAdults(Number(e.target.value)); setAvailableCount(null); }}
+                className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Children</label>
+              <input type="number" min={0} value={children}
+                onChange={(e) => { setChildren(Number(e.target.value)); setAvailableCount(null); }}
+                className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          {!isFullOccupancy && sampleRoom.extraGuestCharge > 0 && (
+            <p className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+              You're getting the discounted rate for {totalGuests} guest{totalGuests > 1 ? 's' : ''} — saving ₹{sampleRoom.extraGuestCharge}/night compared to full occupancy.
+            </p>
+          )}
+          {isFullOccupancy && sampleRoom.extraGuestCharge > 0 && (
+            <p className="text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+              This is the full-occupancy rate for {sampleRoom.capacity} guests.
+            </p>
+          )}
 
           {nights > 0 && (
             <p className="text-sm text-gray-600">
-              {nights} night{nights > 1 ? 's' : ''} × ₹{currentPrice} ({mealPlan}) = <span className="font-medium text-primary-700">₹{nights * currentPrice}</span>
+              {nights} night{nights > 1 ? 's' : ''} × ₹{currentPrice} ({mealPlan}{isFullOccupancy && extraCharge > 0 ? ', full occupancy' : ''}) = <span className="font-medium text-primary-700">₹{nights * currentPrice}</span>
             </p>
           )}
 
@@ -232,16 +252,16 @@ const RoomTypeDetails = () => {
           )}
 
           {user && !user.phone && (
-  <div>
-    <label className="text-xs text-gray-500 mb-1 block">Phone number (required to book)</label>
-    <input
-      value={phoneInput}
-      onChange={(e) => setPhoneInput(e.target.value)}
-      placeholder="e.g. 9876543210"
-      className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm"
-    />
-  </div>
-)}
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Phone number (required to book)</label>
+              <input
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                placeholder="e.g. 9876543210"
+                className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          )}
 
           <div className="flex gap-3">
             <button onClick={checkAvailability} disabled={checking}
@@ -266,7 +286,7 @@ const RoomTypeDetails = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => setInquiryOpen(false)}>
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ duration: 0.3 }}
-  onClick={(e) => e.stopPropagation()} className="bg-white h-full w-full sm:w-[420px] p-5 sm:p-8 overflow-y-auto">
+              onClick={(e) => e.stopPropagation()} className="bg-white h-full w-full sm:w-[420px] p-5 sm:p-8 overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-serif text-2xl text-primary-800">Get in Touch</h2>
                 <button onClick={() => setInquiryOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={22} /></button>
