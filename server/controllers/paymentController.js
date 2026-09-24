@@ -254,4 +254,92 @@ const processCancellationRefund = async (req, res) => {
   }
 };
 
-module.exports = { createPaymentOrder, verifyPayment, createGroupPaymentOrder, verifyGroupPayment, processCancellationRefund };
+const razorpayWebhook = async (req, res) => {
+  try {
+    const signature = req.headers['x-razorpay-signature'];
+    const rawBody = req.body; // Buffer, thanks to express.raw() in server.js
+
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      return res.status(400).json({ message: 'Invalid webhook signature' });
+    }
+
+    const event = JSON.parse(rawBody.toString());
+
+    if (event.event === 'payment.captured') {
+      const payment = event.payload.payment.entity;
+      const { bookingId, groupId, type } = payment.notes || {};
+      const amount = payment.amount / 100;
+      const razorpay_payment_id = payment.id;
+      const razorpay_order_id = payment.order_id;
+
+      if (bookingId) {
+        const booking = await Booking.findById(bookingId).populate('room', 'roomNumber type').populate('user', 'name email');
+        if (booking) {
+          const alreadyProcessed = booking.payments.some(p => p.razorpayPaymentId === razorpay_payment_id);
+          if (!alreadyProcessed) {
+            booking.amountPaid += amount;
+            booking.paymentStatus = booking.amountPaid >= booking.totalAmount ? 'paid' : 'partial';
+            booking.status = 'confirmed';
+            booking.razorpayOrderId = razorpay_order_id;
+            booking.razorpayPaymentId = razorpay_payment_id;
+            booking.payments.push({ razorpayPaymentId: razorpay_payment_id, razorpayOrderId: razorpay_order_id, amount });
+            await booking.save();
+
+            await cancelConflictingPendingBookings(booking.room._id, booking.checkIn, booking.checkOut, booking._id);
+
+            await sendAlertEmail(
+              `Payment Confirmed via Webhook — ${type === 'full' ? 'Full Payment' : 'Advance Payment'}`,
+              `<h3>${booking.user.name} paid ₹${amount}</h3>
+               <p><b>Room:</b> ${booking.room.type} (Room ${booking.room.roomNumber})</p>
+               <p>Confirmed via Razorpay webhook — server-side fallback, browser may have closed before completing normally.</p>`
+            );
+          }
+        }
+      } else if (groupId) {
+        const bookings = await Booking.find({ groupId }).populate('room', 'roomNumber type').populate('user', 'name email');
+        if (bookings.length > 0) {
+          const alreadyProcessed = bookings.some(b => b.payments.some(p => p.razorpayPaymentId === razorpay_payment_id));
+          if (!alreadyProcessed) {
+            const groupTotal = bookings.reduce((sum, b) => sum + b.totalAmount, 0);
+            let distributed = 0;
+            for (let i = 0; i < bookings.length; i++) {
+              const b = bookings[i];
+              const share = i === bookings.length - 1
+                ? amount - distributed
+                : Math.round(amount * (b.totalAmount / groupTotal));
+              distributed += share;
+
+              b.amountPaid += share;
+              b.paymentStatus = b.amountPaid >= b.totalAmount ? 'paid' : 'partial';
+              b.status = 'confirmed';
+              b.razorpayOrderId = razorpay_order_id;
+              b.razorpayPaymentId = razorpay_payment_id;
+              b.payments.push({ razorpayPaymentId: razorpay_payment_id, razorpayOrderId: razorpay_order_id, amount: share });
+              await b.save();
+
+              await cancelConflictingPendingBookings(b.room._id, b.checkIn, b.checkOut, b._id);
+            }
+
+            await sendAlertEmail(
+              `Group Payment Confirmed via Webhook`,
+              `<h3>${bookings[0].user.name} paid ₹${amount} for a ${bookings.length}-room group booking</h3>
+               <p>Confirmed via Razorpay webhook — server-side fallback.</p>`
+            );
+          }
+        }
+      }
+    }
+
+    res.status(200).json({ received: true });
+  } catch (err) {
+    console.error('Webhook error:', err.message);
+    res.status(500).json({ message: 'Webhook processing failed' });
+  }
+};
+
+module.exports = { createPaymentOrder, verifyPayment, createGroupPaymentOrder, verifyGroupPayment, processCancellationRefund, razorpayWebhook };

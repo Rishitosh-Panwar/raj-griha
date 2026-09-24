@@ -8,8 +8,11 @@ connectDB();
 
 const app = express();
 
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), require('./controllers/paymentController').razorpayWebhook);
+
 app.use(express.json());
 app.use(cookieParser());
+
 const allowedOrigins = (process.env.CLIENT_URL || '').split(',').map(o => o.trim());
 
 app.use(cors({
