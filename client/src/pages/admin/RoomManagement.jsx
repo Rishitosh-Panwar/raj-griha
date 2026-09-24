@@ -88,6 +88,28 @@ const RoomManagement = () => {
     }
   };
 
+  const toggleFeatured = async (room) => {
+    try {
+      const fd = new FormData();
+      fd.append('featured', !room.featured);
+      await api.put(`/rooms/${room._id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      fetchRooms();
+    } catch {
+      toast.error('Failed to update');
+    }
+  };
+
+  const updateFeaturedOrder = async (room, order) => {
+    try {
+      const fd = new FormData();
+      fd.append('featuredOrder', order);
+      await api.put(`/rooms/${room._id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      fetchRooms();
+    } catch {
+      toast.error('Failed to update order');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Delete this room? This cannot be undone.')) return;
     try {
@@ -124,6 +146,7 @@ const RoomManagement = () => {
                 <th className="px-6 py-3 font-medium">Extra Guest</th>
                 <th className="px-6 py-3 font-medium">Capacity</th>
                 <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Featured</th>
                 <th className="px-6 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -146,6 +169,23 @@ const RoomManagement = () => {
                   <td className="px-6 py-3">{room.capacity}</td>
                   <td className="px-6 py-3">
                     <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full capitalize">{room.status}</span>
+                  </td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggleFeatured(room)}
+                        className={`text-xs px-3 py-1 rounded-full font-medium ${room.featured ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {room.featured ? 'Featured ★' : 'Not Featured'}
+                      </button>
+                      {room.featured && (
+                        <input
+                          type="number"
+                          defaultValue={room.featuredOrder}
+                          onBlur={(e) => updateFeaturedOrder(room, e.target.value)}
+                          title="Display order (lower shows first)"
+                          className="w-14 border border-primary-200 rounded-lg px-2 py-1 text-xs"
+                        />
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-3">
                     <div className="flex justify-end gap-3">

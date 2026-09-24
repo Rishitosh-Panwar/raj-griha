@@ -11,6 +11,8 @@ const roomSchema = new mongoose.Schema({
   amenities: [{ type: String }],
   images: [{ url: String, publicId: String }],
   status: { type: String, enum: ['available', 'occupied', 'maintenance', 'reserved'], default: 'available' },
+featured: { type: Boolean, default: false },
+featuredOrder: { type: Number, default: 0 },
   description: { type: String, trim: true }
 }, { timestamps: true });
 

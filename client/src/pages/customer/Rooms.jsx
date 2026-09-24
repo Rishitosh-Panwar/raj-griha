@@ -16,6 +16,11 @@ const Rooms = () => {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [featuredRooms, setFeaturedRooms] = useState([]);
+  
+  useEffect(() => {
+    api.get('/rooms', { params: { featured: true } }).then(({ data }) => setFeaturedRooms(data)).catch(() => {});
+  }, []);
 
   const datesReady = checkIn && checkOut && new Date(checkOut) > new Date(checkIn);
 
@@ -141,6 +146,36 @@ const Rooms = () => {
           {loading ? 'Searching...' : 'Check Availability'}
         </button>
       </div>
+
+      {!searched && featuredRooms.length > 0 && (
+        <div className="mb-16">
+          <h2 className="font-serif text-2xl text-primary-800 text-center mb-8">Featured Rooms</h2>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
+            {featuredRooms.map((room) => (
+              <div key={room._id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                <div className="h-56 bg-primary-100 overflow-hidden">
+                  {room.images?.[0] ? (
+                    <img src={room.images[0].url} alt={room.type} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-primary-300">No image</div>
+                  )}
+                </div>
+                <div className="p-6">
+                  <h3 className="font-serif text-xl text-primary-800 mb-1">{room.type}</h3>
+                  <p className="text-primary-600 font-medium mb-1">
+                    From ₹{room.priceEP}/night{room.extraGuestCharge > 0 && <span className="text-xs">*</span>}
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4">Up to {room.capacity} guests</p>
+                  <button onClick={() => navigate(`/rooms/type/${room.type}`)}
+                    className="w-full text-center bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-full text-sm font-medium transition-colors">
+                    View & Book
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       {searched && (

@@ -4,10 +4,11 @@ const cloudinary = require('../config/cloudinary');
 
 const getRooms = async (req, res) => {
   try {
-    const { type, minPrice, maxPrice, capacity } = req.query;
+    const { type, minPrice, maxPrice, capacity, featured } = req.query;
     const filter = {};
 
     if (type) filter.type = type;
+    if (featured === 'true') filter.featured = true;
     if (capacity) filter.capacity = { $gte: Number(capacity) };
     if (minPrice || maxPrice) {
       filter.priceEP = {};
@@ -15,7 +16,8 @@ const getRooms = async (req, res) => {
       if (maxPrice) filter.priceEP.$lte = Number(maxPrice);
     }
 
-    const rooms = await Room.find(filter).sort({ createdAt: -1 });
+    const sortOrder = featured === 'true' ? { featuredOrder: 1, createdAt: -1 } : { createdAt: -1 };
+    const rooms = await Room.find(filter).sort(sortOrder);
     res.json(rooms);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -66,7 +68,7 @@ const updateRoom = async (req, res) => {
     const room = await Room.findById(req.params.id);
     if (!room) return res.status(404).json({ message: 'Room not found' });
 
-    const { roomNumber, type, priceEP, priceCP, priceMAP, extraGuestCharge, capacity, amenities, description, status } = req.body;
+    const { roomNumber, type, priceEP, priceCP, priceMAP, extraGuestCharge, capacity, amenities, description, status, featured, featuredOrder } = req.body;
 
     if (roomNumber) room.roomNumber = roomNumber;
     if (type) room.type = type;
@@ -78,6 +80,8 @@ const updateRoom = async (req, res) => {
     if (amenities) room.amenities = JSON.parse(amenities);
     if (description) room.description = description;
     if (status) room.status = status;
+    if (featured !== undefined) room.featured = featured === 'true' || featured === true;
+    if (featuredOrder !== undefined) room.featuredOrder = Number(featuredOrder);
 
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map(file => ({ url: file.path, publicId: file.filename }));

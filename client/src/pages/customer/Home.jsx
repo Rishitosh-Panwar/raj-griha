@@ -29,7 +29,7 @@ const Home = () => {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const { data } = await api.get('/rooms');
+        const { data } = await api.get('/rooms', { params: { featured: true } });
         setFeaturedRooms(data.slice(0, 3));
       } catch (err) {
         console.error('Failed to load rooms', err);
