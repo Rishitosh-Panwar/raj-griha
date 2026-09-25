@@ -2,8 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
-const sendAlertEmail = require('../utils/sendEmail'); // reused for generic email sending
-const nodemailer = require('nodemailer');
+const { sendGuestEmail } = require('../utils/sendEmail');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -19,25 +18,22 @@ const sendTokenCookie = (res, token) => {
   });
 };
 
-// Password rule: at least 8 characters, at least one digit, no uppercase requirement
 const isValidPassword = (password) => /^(?=.*\d).{8,}$/.test(password);
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// Sends the OTP directly to the SIGNING-UP USER's email — different from sendAlertEmail,
-// which always goes to the hotel's ALERT_EMAIL. This needs its own transporter call.
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-});
-
 const sendOtpEmail = async (toEmail, otp) => {
-  await transporter.sendMail({
-    from: `"Raj Griha" <${process.env.EMAIL_USER}>`,
-    to: toEmail,
-    subject: 'Your Raj Griha verification code',
-    html: `<p>Your verification code is:</p><h2>${otp}</h2><p>This code expires in 10 minutes.</p>`,
-  });
+  try {
+    await sendGuestEmail(
+      toEmail,
+      'Your Raj Griha verification code',
+      `<p>Your verification code is:</p><h2>${otp}</h2><p>This code expires in 10 minutes.</p>`
+    );
+    return true;
+  } catch (err) {
+    console.error('Failed to send OTP email:', err.message);
+    return false;
+  }
 };
 
 // @route POST /api/auth/signup
@@ -63,7 +59,6 @@ const signup = async (req, res) => {
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     if (user) {
-      // Existing but unverified — update their details and resend a fresh OTP
       user.name = name;
       user.password = hashedPassword;
       user.phone = phone || user.phone;
@@ -77,14 +72,21 @@ const signup = async (req, res) => {
       });
     }
 
-    await sendOtpEmail(email, otp);
+    const emailSent = await sendOtpEmail(email, otp);
+    if (!emailSent) {
+      return res.status(200).json({
+        message: 'Account created, but we couldn\'t send the verification email right now. Please use "Resend code" in a moment.',
+        email
+      });
+    }
+
     res.status(200).json({ message: 'Verification code sent to your email', email });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-const otpAttempts = new Map(); // simple in-memory rate limit; resets on server restart
+const otpAttempts = new Map();
 
 const verifyOtp = async (req, res) => {
   try {
@@ -133,7 +135,11 @@ const resendOtp = async (req, res) => {
     user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    await sendOtpEmail(email, otp);
+    const emailSent = await sendOtpEmail(email, otp);
+    if (!emailSent) {
+      return res.status(500).json({ message: 'Could not send the email right now — please try again shortly' });
+    }
+
     res.json({ message: 'Verification code resent' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -182,20 +188,29 @@ const googleAuth = async (req, res) => {
     });
     const payload = ticket.getPayload();
 
-    let user = await User.findOne({ $or: [{ googleId: payload.sub }, { email: payload.email }] });
+    let user = await User.findOne({ googleId: payload.sub });
 
     if (!user) {
-      user = await User.create({
-        name: payload.name,
-        email: payload.email,
-        googleId: payload.sub,
-        role: 'customer',
-        emailVerified: true
-      });
-    } else if (!user.googleId) {
-      user.googleId = payload.sub;
-      user.emailVerified = true;
-      await user.save();
+      const emailMatch = await User.findOne({ email: payload.email });
+
+      if (emailMatch && emailMatch.googleId && emailMatch.googleId !== payload.sub) {
+        return res.status(409).json({ message: 'This email is linked to a different account. Please contact us for help.' });
+      }
+
+      if (emailMatch) {
+        emailMatch.googleId = payload.sub;
+        emailMatch.emailVerified = true;
+        await emailMatch.save();
+        user = emailMatch;
+      } else {
+        user = await User.create({
+          name: payload.name,
+          email: payload.email,
+          googleId: payload.sub,
+          role: 'customer',
+          emailVerified: true
+        });
+      }
     }
 
     const token = generateToken(user._id);
@@ -220,7 +235,6 @@ const getMe = async (req, res) => {
 };
 
 // @route PUT /api/auth/phone
-// used by the booking flow to save a guest's phone number the first time it's collected
 const updatePhone = async (req, res) => {
   try {
     const { phone } = req.body;
@@ -236,7 +250,6 @@ const updatePhone = async (req, res) => {
 };
 
 // @route PUT /api/auth/profile
-// customer — update name and phone, no verification needed
 const updateProfile = async (req, res) => {
   try {
     const { name, phone } = req.body;
@@ -255,7 +268,6 @@ const updateProfile = async (req, res) => {
 };
 
 // @route POST /api/auth/change-email/request
-// customer — sends an OTP to the NEW email address before it's accepted
 const requestEmailChange = async (req, res) => {
   try {
     const { newEmail } = req.body;
@@ -270,7 +282,11 @@ const requestEmailChange = async (req, res) => {
     req.user.emailChangeOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
     await req.user.save();
 
-    await sendOtpEmail(newEmail, otp);
+    const emailSent = await sendOtpEmail(newEmail, otp);
+    if (!emailSent) {
+      return res.status(500).json({ message: 'Could not send the email right now — please try again shortly' });
+    }
+
     res.json({ message: 'Verification code sent to your new email' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -278,7 +294,6 @@ const requestEmailChange = async (req, res) => {
 };
 
 // @route POST /api/auth/change-email/verify
-// customer — confirms the OTP and actually swaps the email over
 const verifyEmailChange = async (req, res) => {
   try {
     const { otp } = req.body;
