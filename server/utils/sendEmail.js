@@ -1,11 +1,15 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  family: 4, // force IPv4 — Render's network can't reach Gmail over IPv6
+  connectionTimeout: 10000, // fail within 10s instead of hanging for minutes
 });
 
 const sendAlertEmail = async (subject, html) => {
@@ -17,7 +21,6 @@ const sendAlertEmail = async (subject, html) => {
       html,
     });
   } catch (err) {
-    // Log but never let an email failure break the actual booking/order flow
     console.error('Failed to send alert email:', err.message);
   }
 };
