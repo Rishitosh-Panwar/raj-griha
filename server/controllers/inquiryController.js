@@ -1,7 +1,4 @@
-const sendAlertEmail = require('../utils/sendEmail');
-
-// @route POST /api/inquiries/room
-// public — "Get in Touch" form on Room Details
+const { sendAlertEmail } = require('../utils/sendEmail');
 const sendRoomInquiry = async (req, res) => {
   try {
     const { name, email, phone, roomType, roomNumber, message } = req.body;
@@ -25,7 +22,7 @@ const sendRoomInquiry = async (req, res) => {
   }
 };
 
-// @route POST /api/inquiries/general
+// @route POST /api/inquiries/general 
 // public — Contact page: reservations, events, weddings, general questions
 const sendGeneralInquiry = async (req, res) => {
   try {

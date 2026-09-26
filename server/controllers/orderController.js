@@ -1,7 +1,7 @@
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const MenuItem = require('../models/MenuItem');
-const sendAlertEmail = require('../utils/sendEmail');
+const { sendAlertEmail } = require('../utils/sendEmail');
 
 const createOrder = async (req, res) => {
   try {
