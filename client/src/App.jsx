@@ -20,6 +20,7 @@ import GroupBooking from './pages/customer/GroupBooking';
 import GroupConfirmation from './pages/customer/GroupConfirmation';
 import RoomTypeDetails from './pages/customer/RoomTypeDetails';
 import VerifyOtp from './pages/customer/VerifyOtp';
+import ForgotPassword from './pages/customer/ForgotPassword';
 import About from './pages/customer/About';
 import Gallery from './pages/customer/Gallery';
 import Contact from './pages/customer/Contact';
@@ -88,6 +89,7 @@ function App() {
         <Route path="/group-booking" element={<Layout><GroupBooking /></Layout>} />
         <Route path="/group-confirmation/:groupId" element={<Layout><GroupConfirmation /></Layout>} />
         <Route path="/verify-otp" element={<Layout><VerifyOtp /></Layout>} />
+        <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
         <Route path="/about" element={<Layout><About /></Layout>} />
         <Route path="/gallery" element={<Layout><Gallery /></Layout>} />
         <Route path="/contact" element={<Layout><Contact /></Layout>} />

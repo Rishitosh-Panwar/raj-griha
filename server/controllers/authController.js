@@ -146,6 +146,75 @@ const resendOtp = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const genericResponse = { message: 'If that email is registered, a reset code has been sent' };
+
+    const user = await User.findOne({ email });
+    if (!user) return res.json(genericResponse);
+
+    if (user.googleId && !user.password) {
+      await sendGuestEmail(
+        email,
+        'Sign in to Raj Griha with Google',
+        `<p>Hi ${user.name},</p>
+         <p>Your Raj Griha account uses Google Sign-In, so it doesn't have a password to reset.
+         Just choose "Continue with Google" on the login page.</p>`
+      );
+      return res.json(genericResponse);
+    }
+
+    const otp = generateOtp();
+    user.resetPasswordOtp = otp;
+    user.resetPasswordOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+    otpAttempts.delete(`reset:${email.toLowerCase()}`);
+
+    await sendOtpEmail(email, otp);
+    res.json(genericResponse);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: 'Email, code, and new password are required' });
+    }
+    if (!isValidPassword(newPassword)) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters and include at least one number' });
+    }
+
+    const attemptKey = `reset:${email.toLowerCase()}`;
+    const attempts = otpAttempts.get(attemptKey) || 0;
+    if (attempts >= 5) {
+      return res.status(429).json({ message: 'Too many attempts. Please request a new code.' });
+    }
+
+    const user = await User.findOne({ email }).select('+resetPasswordOtp +resetPasswordOtpExpires');
+    if (!user || !user.resetPasswordOtp || user.resetPasswordOtp !== otp || user.resetPasswordOtpExpires < new Date()) {
+      otpAttempts.set(attemptKey, attempts + 1);
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+
+    otpAttempts.delete(attemptKey);
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordOtpExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successfully. Please log in.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // @route POST /api/auth/login
 const login = async (req, res) => {
   try {
@@ -318,4 +387,4 @@ const verifyEmailChange = async (req, res) => {
   }
 };
 
-module.exports = { signup, verifyOtp, resendOtp, login, googleAuth, logout, getMe, updatePhone, updateProfile, requestEmailChange, verifyEmailChange };
+module.exports = { signup, verifyOtp, resendOtp, login, googleAuth, logout, getMe, updatePhone, updateProfile, requestEmailChange, verifyEmailChange, forgotPassword, resetPassword };

@@ -15,23 +15,23 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  try {
-    const user = await login(email, password);
-    toast.success(`Welcome back, ${user.name.split(' ')[0]}`);
-    navigate(user.role === 'admin' ? '/admin/dashboard' : '/');
-  } catch (err) {
-    if (err.response?.data?.needsVerification) {
-      toast.error('Please verify your email first');
-      navigate('/verify-otp', { state: { email: err.response.data.email } });
-    } else {
-      toast.error(err.response?.data?.message || 'Login failed');
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const user = await login(email, password);
+      toast.success(`Welcome back, ${user.name.split(' ')[0]}`);
+      navigate(user.role === 'admin' ? '/admin/dashboard' : '/');
+    } catch (err) {
+      if (err.response?.data?.needsVerification) {
+        toast.error('Please verify your email first');
+        navigate('/verify-otp', { state: { email: err.response.data.email } });
+      } else {
+        toast.error(err.response?.data?.message || 'Login failed');
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-6">
@@ -45,11 +45,11 @@ const Login = () => {
         <p className="text-gray-500 text-sm text-center mb-8">Log in to manage your bookings</p>
 
         <GoogleButton />
-<div className="flex items-center gap-3 my-6">
-  <div className="h-px bg-gray-200 flex-1" />
-  <span className="text-xs text-gray-400">or</span>
-  <div className="h-px bg-gray-200 flex-1" />
-</div>
+        <div className="flex items-center gap-3 my-6">
+          <div className="h-px bg-gray-200 flex-1" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="h-px bg-gray-200 flex-1" />
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -63,7 +63,12 @@ const Login = () => {
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-gray-500">Password</label>
+              <Link to="/forgot-password" className="text-xs text-primary-600 hover:text-primary-800">
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               required
