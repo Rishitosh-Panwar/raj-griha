@@ -1,5 +1,6 @@
 import Navbar from './Navbar';
 import Footer from './Footer';
+import WhatsAppButton from '../WhatsAppButton';
 
 const Layout = ({ children }) => {
   return (
@@ -7,6 +8,7 @@ const Layout = ({ children }) => {
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 };
