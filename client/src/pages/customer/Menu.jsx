@@ -5,6 +5,7 @@ import { ShoppingCart, Plus, Minus, X } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import usePageTitle from '../../hooks/usePageTitle';
+import { optimizeImage } from '../../utils/cloudinary';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -158,7 +159,7 @@ const Menu = () => {
                       className="flex items-center gap-3 sm:gap-4 bg-white rounded-xl shadow-sm p-3 hover:shadow-md transition-shadow">
                       <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg bg-primary-50 overflow-hidden flex-shrink-0">
                         {item.image?.url ? (
-                          <img src={item.image.url} alt={item.name} className="w-full h-full object-cover" />
+                          <img src={optimizeImage(item.image.url, 200)} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-primary-200 text-xs">No photo</div>
                         )}

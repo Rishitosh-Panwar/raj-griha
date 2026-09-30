@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import api from '../../api/axios';
 import usePageTitle from '../../hooks/usePageTitle';
+import { optimizeImage } from '../../utils/cloudinary';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -52,7 +53,7 @@ const Gallery = () => {
                 img.size === 'large' ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'
               }`}
             >
-              <img src={img.url} alt={img.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <img src={optimizeImage(img.url, 600)} alt={img.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               {img.caption && (
                 <span className="absolute bottom-3 left-3 text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
@@ -79,7 +80,7 @@ const Gallery = () => {
               onClick={(e) => e.stopPropagation()}
               className="max-w-4xl w-full"
             >
-              <img src={selected.url} alt={selected.caption} className="w-full max-h-[80vh] object-contain rounded-lg mx-auto" />
+              <img src={optimizeImage(selected.url, 1400)} alt={selected.caption} className="w-full max-h-[80vh] object-contain rounded-lg mx-auto" />
               {selected.caption && (
                 <p className="text-white text-center mt-4 text-sm">{selected.caption}</p>
               )}

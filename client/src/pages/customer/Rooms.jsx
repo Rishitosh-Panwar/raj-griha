@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import usePageTitle from '../../hooks/usePageTitle';
+import { optimizeImage } from '../../utils/cloudinary';
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -17,7 +18,7 @@ const Rooms = () => {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [featuredRooms, setFeaturedRooms] = useState([]);
-  
+
   useEffect(() => {
     api.get('/rooms', { params: { featured: true } }).then(({ data }) => setFeaturedRooms(data)).catch(() => {});
   }, []);
@@ -39,7 +40,6 @@ const Rooms = () => {
     setLoading(true);
     setSearched(true);
     try {
-      // search endpoint takes one `type`, so if multiple are selected we call it per type and merge
       const typesToQuery = filters.type.length > 0 ? filters.type : [null];
       const allResults = await Promise.all(
         typesToQuery.map((t) => {
@@ -155,7 +155,7 @@ const Rooms = () => {
               <div key={room._id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
                 <div className="h-56 bg-primary-100 overflow-hidden">
                   {room.images?.[0] ? (
-                    <img src={room.images[0].url} alt={room.type} className="w-full h-full object-cover" />
+                    <img src={optimizeImage(room.images[0].url, 800)} alt={room.type} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-primary-300">No image</div>
                   )}
@@ -191,7 +191,7 @@ const Rooms = () => {
                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                 <div className="h-56 bg-primary-100 overflow-hidden">
                   {group.images?.[0] ? (
-                    <img src={group.images[0].url} alt={group.type} className="w-full h-full object-cover" />
+                    <img src={optimizeImage(group.images[0].url, 800)} alt={group.type} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-primary-300">No image</div>
                   )}

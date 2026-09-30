@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Users, Check, X } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { optimizeImage } from '../../utils/cloudinary';
 
 const plans = [
   { key: 'EP', label: 'EP', desc: 'Room Only' },
@@ -137,7 +138,7 @@ const RoomTypeDetails = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
         <div className="h-64 sm:h-96 rounded-2xl overflow-hidden bg-primary-100 mb-4">
           {sampleRoom.images?.[activeImage] ? (
-            <img src={sampleRoom.images[activeImage].url} alt={type} className="w-full h-full object-cover" />
+            <img src={optimizeImage(sampleRoom.images[activeImage].url, 1000)} alt={type} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-primary-300">No image</div>
           )}
@@ -147,7 +148,7 @@ const RoomTypeDetails = () => {
             {sampleRoom.images.map((img, i) => (
               <button key={img._id} onClick={() => setActiveImage(i)}
                 className={`h-20 w-20 rounded-lg overflow-hidden border-2 transition-colors ${activeImage === i ? 'border-primary-600' : 'border-transparent'}`}>
-                <img src={img.url} alt="" className="w-full h-full object-cover" />
+                <img src={optimizeImage(img.url, 200)} alt="" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>

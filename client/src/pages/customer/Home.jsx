@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Wifi, Tv, Droplets, ConciergeBell, Car, UtensilsCrossed, Trees, Users, PartyPopper } from 'lucide-react';
 import api from '../../api/axios';
 import usePageTitle from '../../hooks/usePageTitle';
+import { optimizeImage } from '../../utils/cloudinary';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -43,7 +44,7 @@ const Home = () => {
       {/* Hero */}
     <section className="relative h-[70vh] sm:h-[85vh] flex items-end justify-center overflow-hidden">
   <img
-    src="https://res.cloudinary.com/w4vetazv/image/upload/v1789561057/IMG_5371.jpg"
+    src={optimizeImage('https://res.cloudinary.com/w4vetazv/image/upload/v1789561057/IMG_5371.jpg', 1600)}
     alt="Raj Griha"
     className="absolute inset-0 w-full h-full object-cover"
   />
@@ -136,7 +137,7 @@ const Home = () => {
             className="h-56 sm:h-72 rounded-2xl overflow-hidden"
           >
             <img
-              src="https://res.cloudinary.com/w4vetazv/image/upload/v1789494090/WhatsApp_Image_2026-09-15_at_19.47.32.jpg"
+              src={optimizeImage('https://res.cloudinary.com/w4vetazv/image/upload/v1789494090/WhatsApp_Image_2026-09-15_at_19.47.32.jpg', 1000)}
               alt="Uttarkashi valley view"
               className="w-full h-full object-cover"
             />
@@ -173,7 +174,7 @@ const Home = () => {
                 >
                   <div className="h-56 bg-primary-100 overflow-hidden">
                     {room.images?.[0] ? (
-                      <img src={room.images[0].url} alt={room.type} className="w-full h-full object-cover" />
+                      <img src={optimizeImage(room.images[0].url, 800)} alt={room.type} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-primary-300">No image</div>
                     )}

@@ -1,5 +1,3 @@
-import { MessageCircle } from 'lucide-react';
-
 const WHATSAPP_NUMBER = '917668434826';
 
 const WhatsAppButton = () => {
@@ -9,9 +7,11 @@ const WhatsAppButton = () => {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed bottom-5 right-5 z-40 flex items-center justify-center h-14 w-14 rounded-full bg-[#25D366] text-white shadow-lg hover:scale-105 transition-transform"
+      className="fixed bottom-5 right-5 z-40 flex items-center justify-center h-14 w-14 rounded-full bg-[#25D366] shadow-lg hover:scale-105 transition-transform"
     >
-      <MessageCircle size={28} fill="white" strokeWidth={0} />
+      <svg viewBox="0 0 32 32" width="30" height="30" fill="white" aria-hidden="true">
+        <path d="M16.004 3C9.376 3 4 8.373 4 15c0 2.29.638 4.43 1.744 6.254L4 29l7.94-1.685A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3Zm0 21.818c-1.94 0-3.75-.57-5.27-1.552l-.378-.238-4.71 1.001 1.02-4.59-.246-.386A9.8 9.8 0 0 1 5.182 15c0-5.964 4.858-10.818 10.822-10.818S26.818 9.036 26.818 15 21.968 24.818 16.004 24.818Zm5.94-8.144c-.325-.163-1.92-.947-2.218-1.056-.298-.109-.515-.163-.732.163-.217.325-.84 1.056-1.03 1.273-.19.217-.38.244-.705.081-.325-.163-1.372-.505-2.614-1.611-.966-.861-1.618-1.925-1.808-2.25-.19-.325-.02-.5.143-.663.146-.146.325-.38.488-.57.163-.19.217-.325.325-.542.108-.217.054-.407-.027-.57-.081-.163-.732-1.764-1.003-2.417-.264-.635-.532-.55-.732-.56l-.624-.011c-.217 0-.57.081-.868.407-.298.325-1.138 1.112-1.138 2.713 0 1.6 1.165 3.148 1.328 3.365.163.217 2.293 3.5 5.556 4.908.776.335 1.382.535 1.854.685.779.248 1.488.213 2.048.129.625-.093 1.92-.784 2.19-1.542.27-.759.27-1.409.19-1.542-.081-.135-.298-.217-.622-.38Z" />
+      </svg>
     </a>
   );
 };
