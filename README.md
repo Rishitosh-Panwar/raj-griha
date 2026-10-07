@@ -1,4 +1,4 @@
-# 🏨 Raj Griha
+# Raj Griha
 
 ### Hotel Management & Booking Platform
 
