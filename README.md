@@ -1,10 +1,10 @@
-# Raj Griha
+# 🏨 Raj Griha
 
 ### Hotel Management & Booking Platform
 
 A full-stack hotel booking and management platform built for **Raj Griha** — covering room discovery, availability, bookings, payments, guest management, orders, and hotel administration.
 
-🌐 **Live:** [rajgriha.com](https://www.rajgriha.com/)  
+🌐 **Live:** [rajgriha.com](https://rajgriha.com/)  
 💻 **Repository:** [GitHub](https://github.com/Rishitosh-Panwar/raj-griha)
 
 ---
@@ -109,135 +109,43 @@ Dedicated management interfaces for:
 
 - Vercel — frontend
 - Render — backend
-- Cloudflare — domain / infrastructure services
 
 ---
 
 ## 🏗️ Project Structure
 
+The project is split into separate frontend and backend applications.
+
 ```text
-Directory structure:
-└── rishitosh-panwar-raj-griha/
-    ├── README.md
-    ├── client/
-    │   ├── README.md
-    │   ├── eslint.config.js
-    │   ├── index.html
-    │   ├── package.json
-    │   ├── vercel.json
-    │   ├── vite.config.js
-    │   ├── public/
-    │   │   ├── robots.txt
-    │   │   ├── site.webmanifest
-    │   │   └── sitemap.xml
-    │   └── src/
-    │       ├── App.css
-    │       ├── App.jsx
-    │       ├── index.css
-    │       ├── main.jsx
-    │       ├── api/
-    │       │   └── axios.js
-    │       ├── components/
-    │       │   ├── BookingsList.jsx
-    │       │   ├── GoogleButton.jsx
-    │       │   ├── GroupPaymentButtons.jsx
-    │       │   ├── OrdersList.jsx
-    │       │   ├── PaymentButtons.jsx
-    │       │   ├── ProtectedRoute.jsx
-    │       │   ├── WhatsAppButton.jsx
-    │       │   ├── admin/
-    │       │   │   ├── AdminLayout.jsx
-    │       │   │   └── AdminSidebar.jsx
-    │       │   └── layout/
-    │       │       ├── Footer.jsx
-    │       │       ├── Layout.jsx
-    │       │       └── Navbar.jsx
-    │       ├── context/
-    │       │   └── AuthContext.jsx
-    │       ├── hooks/
-    │       │   └── usePageTitle.js
-    │       ├── pages/
-    │       │   ├── admin/
-    │       │   │   ├── BookingManagement.jsx
-    │       │   │   ├── Dashboard.jsx
-    │       │   │   ├── GalleryManagement.jsx
-    │       │   │   ├── MenuManagement.jsx
-    │       │   │   ├── OrderManagement.jsx
-    │       │   │   ├── RoomManagement.jsx
-    │       │   │   └── Settings.jsx
-    │       │   └── customer/
-    │       │       ├── About.jsx
-    │       │       ├── BookingConfirmation.jsx
-    │       │       ├── CancellationPolicy.jsx
-    │       │       ├── Contact.jsx
-    │       │       ├── ForgotPassword.jsx
-    │       │       ├── Gallery.jsx
-    │       │       ├── GroupBooking.jsx
-    │       │       ├── GroupConfirmation.jsx
-    │       │       ├── Home.jsx
-    │       │       ├── Login.jsx
-    │       │       ├── Menu.jsx
-    │       │       ├── MyBookings.jsx
-    │       │       ├── MyOrders.jsx
-    │       │       ├── NotFound.jsx
-    │       │       ├── Privacy.jsx
-    │       │       ├── Profile.jsx
-    │       │       ├── RoomDetails.jsx
-    │       │       ├── Rooms.jsx
-    │       │       ├── RoomTypeDetails.jsx
-    │       │       ├── Signup.jsx
-    │       │       ├── Terms.jsx
-    │       │       └── VerifyOtp.jsx
-    │       └── utils/
-    │           ├── alertSound.js
-    │           └── cloudinary.js
-    └── server/
-        ├── package.json
-        ├── server.js
-        ├── config/
-        │   ├── cloudinary.js
-        │   └── db.js
-        ├── controllers/
-        │   ├── adminController.js
-        │   ├── authController.js
-        │   ├── bookingController.js
-        │   ├── galleryController.js
-        │   ├── inquiryController.js
-        │   ├── menuController.js
-        │   ├── orderController.js
-        │   ├── paymentController.js
-        │   ├── roomController.js
-        │   └── settingsController.js
-        ├── middleware/
-        │   ├── auth.js
-        │   ├── upload.js
-        │   ├── uploadGallery.js
-        │   └── uploadMenu.js
-        ├── models/
-        │   ├── Booking.js
-        │   ├── GalleryImage.js
-        │   ├── MenuItem.js
-        │   ├── Order.js
-        │   ├── Review.js
-        │   ├── Room.js
-        │   ├── Settings.js
-        │   └── User.js
-        ├── routes/
-        │   ├── adminRoutes.js
-        │   ├── authRoutes.js
-        │   ├── bookingRoutes.js
-        │   ├── galleryRoutes.js
-        │   ├── inquiryRoutes.js
-        │   ├── menuRoutes.js
-        │   ├── orderRoutes.js
-        │   ├── paymentRoutes.js
-        │   ├── roomRoutes.js
-        │   └── settingsRoutes.js
-        └── utils/
-            └── sendEmail.js
+raj-griha/
+├── client/
+│   ├── public/
+│   └── src/
+│       ├── api/
+│       ├── components/
+│       │   ├── admin/
+│       │   └── layout/
+│       ├── context/
+│       ├── hooks/
+│       ├── pages/
+│       │   ├── admin/
+│       │   └── customer/
+│       └── utils/
+│
+├── server/
+│   ├── config/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   └── utils/
+│
+└── README.md
 ```
 
-The project is split into separate frontend and backend applications, with the React client communicating with the Express REST API.
+**Client** — React/Vite frontend with separate customer and admin experiences, reusable components, authentication context, protected routes, API integration, and utility modules.
+
+**Server** — Express backend organized around routes, controllers, middleware, MongoDB models, configuration modules, and utility services.
 
 ---
 
