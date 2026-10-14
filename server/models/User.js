@@ -17,10 +17,16 @@ const userSchema = new mongoose.Schema({
   otp: { type: String, select: false },
   otpExpires: { type: Date, select: false },
   resetPasswordOtp: { type: String, select: false },
-resetPasswordOtpExpires: { type: Date, select: false },
+  resetPasswordOtpExpires: { type: Date, select: false },
   pendingEmail: { type: String, default: null },
-emailChangeOtp: { type: String, select: false },
-emailChangeOtpExpires: { type: Date, select: false }
+  emailChangeOtp: { type: String, select: false },
+  emailChangeOtpExpires: { type: Date, select: false },
+
+  lastOtpSentAt: { type: Date, default: null },
+
+  unverifiedExpiresAt: { type: Date, default: undefined }
 }, { timestamps: true });
+
+userSchema.index({ unverifiedExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('User', userSchema);

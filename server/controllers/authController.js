@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
@@ -20,7 +21,25 @@ const sendTokenCookie = (res, token) => {
 
 const isValidPassword = (password) => /^(?=.*\d).{8,}$/.test(password);
 
-const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+// Cryptographically secure 6-digit code (Math.random is predictable)
+const generateOtp = () => crypto.randomInt(100000, 1000000).toString();
+
+const OTP_COOLDOWN_MS = 60 * 1000;                   // minimum gap between codes for one account
+const UNVERIFIED_LIFETIME_MS = 24 * 60 * 60 * 1000;  // unverified accounts auto-delete after this
+
+const isOnCooldown = (user) =>
+  !!user.lastOtpSentAt && Date.now() - new Date(user.lastOtpSentAt).getTime() < OTP_COOLDOWN_MS;
+const cleanEmail = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+
+const maskEmail = (email = '') => {
+  const [local = '', domain = ''] = String(email).split('@');
+  return `${local.slice(0, 2)}***@${domain}`;
+};
+
+// Logs the event, client IP and a masked email. Never logs codes, passwords or full addresses.
+const logAuth = (req, event, email) => {
+  console.log('[AUTH]', JSON.stringify({ event, ip: req.ip, email: maskEmail(email), at: new Date().toISOString() }));
+};
 
 const sendOtpEmail = async (toEmail, otp) => {
   try {
@@ -39,10 +58,14 @@ const sendOtpEmail = async (toEmail, otp) => {
 // @route POST /api/auth/signup
 const signup = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, password, phone } = req.body;
+    const email = cleanEmail(req.body.email);
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Please fill all required fields' });
+    }
+    if (typeof name !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ message: 'Invalid input' });
     }
     if (!isValidPassword(password)) {
       return res.status(400).json({ message: 'Password must be at least 8 characters and include at least one number' });
@@ -52,27 +75,36 @@ const signup = async (req, res) => {
     if (user && user.emailVerified) {
       return res.status(400).json({ message: 'Email already registered' });
     }
+    if (user && isOnCooldown(user)) {
+      return res.status(429).json({ message: 'A code was just sent. Please wait a minute before trying again.' });
+    }
 
+    const cleanPhone = typeof phone === 'string' ? phone.trim() : undefined;
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const otp = generateOtp();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    const unverifiedExpiresAt = new Date(Date.now() + UNVERIFIED_LIFETIME_MS);
 
     if (user) {
       user.name = name;
       user.password = hashedPassword;
-      user.phone = phone || user.phone;
+      user.phone = cleanPhone || user.phone;
       user.otp = otp;
       user.otpExpires = otpExpires;
+      user.lastOtpSentAt = new Date();
+      user.unverifiedExpiresAt = unverifiedExpiresAt;
       await user.save();
     } else {
       user = await User.create({
-        name, email, password: hashedPassword, phone,
-        role: 'customer', emailVerified: false, otp, otpExpires
+        name, email, password: hashedPassword, phone: cleanPhone,
+        role: 'customer', emailVerified: false, otp, otpExpires,
+        lastOtpSentAt: new Date(), unverifiedExpiresAt
       });
     }
 
     const emailSent = await sendOtpEmail(email, otp);
+    logAuth(req, 'signup-code-requested', email);
     if (!emailSent) {
       return res.status(200).json({
         message: 'Account created, but we couldn\'t send the verification email right now. Please use "Resend code" in a moment.',
@@ -90,10 +122,13 @@ const otpAttempts = new Map();
 
 const verifyOtp = async (req, res) => {
   try {
-    const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ message: 'Email and code are required' });
+    const email = cleanEmail(req.body.email);
+    const { otp } = req.body;
+    if (!email || typeof otp !== 'string' || !otp) {
+      return res.status(400).json({ message: 'Email and code are required' });
+    }
 
-    const attemptKey = email.toLowerCase();
+    const attemptKey = email;
     const attempts = otpAttempts.get(attemptKey) || 0;
     if (attempts >= 5) {
       return res.status(429).json({ message: 'Too many attempts. Please request a new code.' });
@@ -111,7 +146,9 @@ const verifyOtp = async (req, res) => {
     user.emailVerified = true;
     user.otp = undefined;
     user.otpExpires = undefined;
+    user.unverifiedExpiresAt = undefined; // real account now: never auto-delete
     await user.save();
+    logAuth(req, 'email-verified', email);
 
     const token = generateToken(user._id);
     sendTokenCookie(res, token);
@@ -125,17 +162,26 @@ const verifyOtp = async (req, res) => {
 // @route POST /api/auth/resend-otp
 const resendOtp = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = cleanEmail(req.body.email);
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'Account not found' });
     if (user.emailVerified) return res.status(400).json({ message: 'Account already verified' });
+    if (isOnCooldown(user)) {
+      return res.status(429).json({ message: 'Please wait a minute before requesting another code.' });
+    }
 
     const otp = generateOtp();
     user.otp = otp;
     user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.lastOtpSentAt = new Date();
+    user.unverifiedExpiresAt = new Date(Date.now() + UNVERIFIED_LIFETIME_MS);
     await user.save();
+    otpAttempts.delete(email); // a fresh code gets a fresh set of attempts
 
     const emailSent = await sendOtpEmail(email, otp);
+    logAuth(req, 'resend-code-requested', email);
     if (!emailSent) {
       return res.status(500).json({ message: 'Could not send the email right now — please try again shortly' });
     }
@@ -148,15 +194,20 @@ const resendOtp = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = cleanEmail(req.body.email);
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
     const genericResponse = { message: 'If that email is registered, a reset code has been sent' };
 
-    const user = await User.findOne({ email });
-    if (!user) return res.json(genericResponse);
+    const user = await User.findOne({ email }).select('+password');
+    // Unverified accounts never get a reset code. Anyone could create one for an address they
+    // don't own, which would turn this form into a second email-sending channel.
+    if (!user || !user.emailVerified) return res.json(genericResponse);
+    if (isOnCooldown(user)) return res.json(genericResponse);
 
     if (user.googleId && !user.password) {
+      user.lastOtpSentAt = new Date();
+      await user.save();
       await sendGuestEmail(
         email,
         'Sign in to Raj Griha with Google',
@@ -164,16 +215,19 @@ const forgotPassword = async (req, res) => {
          <p>Your Raj Griha account uses Google Sign-In, so it doesn't have a password to reset.
          Just choose "Continue with Google" on the login page.</p>`
       );
+      logAuth(req, 'reset-google-notice', email);
       return res.json(genericResponse);
     }
 
     const otp = generateOtp();
     user.resetPasswordOtp = otp;
     user.resetPasswordOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.lastOtpSentAt = new Date();
     await user.save();
-    otpAttempts.delete(`reset:${email.toLowerCase()}`);
+    otpAttempts.delete(`reset:${email}`);
 
     await sendOtpEmail(email, otp);
+    logAuth(req, 'reset-code-requested', email);
     res.json(genericResponse);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -182,15 +236,16 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
+    const email = cleanEmail(req.body.email);
+    const { otp, newPassword } = req.body;
+    if (!email || typeof otp !== 'string' || !otp || typeof newPassword !== 'string' || !newPassword) {
       return res.status(400).json({ message: 'Email, code, and new password are required' });
     }
     if (!isValidPassword(newPassword)) {
       return res.status(400).json({ message: 'Password must be at least 8 characters and include at least one number' });
     }
 
-    const attemptKey = `reset:${email.toLowerCase()}`;
+    const attemptKey = `reset:${email}`;
     const attempts = otpAttempts.get(attemptKey) || 0;
     if (attempts >= 5) {
       return res.status(429).json({ message: 'Too many attempts. Please request a new code.' });
@@ -208,6 +263,7 @@ const resetPassword = async (req, res) => {
     user.resetPasswordOtp = undefined;
     user.resetPasswordOtpExpires = undefined;
     await user.save();
+    logAuth(req, 'password-reset', email);
 
     res.json({ message: 'Password reset successfully. Please log in.' });
   } catch (err) {
@@ -218,8 +274,9 @@ const resetPassword = async (req, res) => {
 // @route POST /api/auth/login
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const email = cleanEmail(req.body.email);
+    const { password } = req.body;
+    if (!email || !password || typeof password !== 'string') {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
@@ -267,8 +324,18 @@ const googleAuth = async (req, res) => {
       }
 
       if (emailMatch) {
+        if (!emailMatch.emailVerified) {
+          emailMatch.password = undefined;
+          emailMatch.name = payload.name;
+          emailMatch.phone = null;
+          emailMatch.otp = undefined;
+          emailMatch.otpExpires = undefined;
+          emailMatch.resetPasswordOtp = undefined;
+          emailMatch.resetPasswordOtpExpires = undefined;
+        }
         emailMatch.googleId = payload.sub;
         emailMatch.emailVerified = true;
+        emailMatch.unverifiedExpiresAt = undefined; // verified now: never auto-delete
         await emailMatch.save();
         user = emailMatch;
       } else {
@@ -339,8 +406,11 @@ const updateProfile = async (req, res) => {
 // @route POST /api/auth/change-email/request
 const requestEmailChange = async (req, res) => {
   try {
-    const { newEmail } = req.body;
+    const newEmail = cleanEmail(req.body.newEmail);
     if (!newEmail) return res.status(400).json({ message: 'New email is required' });
+    if (isOnCooldown(req.user)) {
+      return res.status(429).json({ message: 'Please wait a minute before requesting another code.' });
+    }
 
     const existing = await User.findOne({ email: newEmail });
     if (existing) return res.status(400).json({ message: 'That email is already in use' });
@@ -349,9 +419,11 @@ const requestEmailChange = async (req, res) => {
     req.user.pendingEmail = newEmail;
     req.user.emailChangeOtp = otp;
     req.user.emailChangeOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    req.user.lastOtpSentAt = new Date();
     await req.user.save();
 
     const emailSent = await sendOtpEmail(newEmail, otp);
+    logAuth(req, 'email-change-code-requested', newEmail);
     if (!emailSent) {
       return res.status(500).json({ message: 'Could not send the email right now — please try again shortly' });
     }

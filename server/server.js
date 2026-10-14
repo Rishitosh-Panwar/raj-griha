@@ -29,6 +29,22 @@ app.use(cors({
   credentials: true
 }));
 
+app.use('/api/auth', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'OPTIONS') return next();
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log('[AUTH REQUEST]', JSON.stringify({
+      method: req.method,
+      path: req.originalUrl,
+      status: res.statusCode,
+      ip: req.ip,
+      ms: Date.now() - start,
+      at: new Date().toISOString()
+    }));
+  });
+  next();
+});
+
 const makeLimiter = (windowMs, limit, message, extra = {}) =>
   rateLimit({
     windowMs,
